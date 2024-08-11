@@ -1,5 +1,5 @@
 <template>
-  <HelloWorld />
+  <MainContent />
 </template>
 
 <script lang="ts" setup>
