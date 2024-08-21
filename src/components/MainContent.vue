@@ -1,29 +1,27 @@
 <template>
 
-  <v-main>
 
+<v-container>
 
-    <v-table>
-      <thead>
-        <tr>
-          <th class="text-left">
-            Name
-          </th>
-          <th class="text-left">
-            Calories
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>pera</td>
-          <td>12</td>
-        </tr>
-      </tbody>
-    </v-table>
+  <v-textarea 
+    clearable 
+    label="Label" 
+    variant="outlined"
+    class="textbox"
+    bg-color="grey-lighten-2"
+    color="black"
+    ></v-textarea>
 
+    <v-btn 
+    prepend-icon="mdi-microphone" 
+    variant="outlined">
 
-  </v-main>
+      Converter para Texto
+
+    </v-btn>  
+
+</v-container>
+
 
 
 </template>
@@ -31,3 +29,11 @@
 <script setup lang="ts">
 //
 </script>
+
+<style>
+
+.textbox{
+  margin-top: 20%;
+}
+
+</style>
