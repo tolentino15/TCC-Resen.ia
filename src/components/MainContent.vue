@@ -65,8 +65,8 @@ const processAudioToText = async (audioBlob: Blob) => {
     const requestData = {
       config: {
         encoding: 'LINEAR16',
-        sampleRateHertz: 16000,
-        languageCode: 'pt-BR',  // Ajuste conforme necessário
+        sampleRateHertz: 48000, // Ajustado para a taxa de amostragem correta
+        languageCode: 'pt-BR',
       },
       audio: {
         content: audioBase64,
@@ -74,17 +74,39 @@ const processAudioToText = async (audioBlob: Blob) => {
     };
 
     try {
-      const response = await axios.post(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`, requestData);
-      transcript.value = response.data.results
-        .map((result: any) => result.alternatives[0].transcript)
-        .join('\n'); // Atualiza o textarea com o texto transcrito
+      const response = await axios.post(
+        `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data && response.data.results && response.data.results.length > 0) {
+        transcript.value = response.data.results
+          .map((result: any) => result.alternatives[0].transcript)
+          .join('\n'); // Atualiza o textarea com o texto transcrito
+      } else {
+        console.warn('Nenhum resultado de reconhecimento foi retornado.');
+        transcript.value = 'Nenhum texto reconhecido.';
+      }
     } catch (error) {
-      console.error('Erro durante o reconhecimento de fala:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Erro durante o reconhecimento de fala:', error.message);
+        if (error.response) {
+          console.error('Detalhes do erro:', error.response.data);
+        }
+      } else {
+        console.error('Erro inesperado:', error);
+      }
     }
   };
 
   reader.readAsDataURL(audioBlob);
 };
+
 </script>
 
 <style>
