@@ -1,112 +1,114 @@
 <template>
   <v-container>
-    <v-textarea 
-      clearable 
-      label="Label" 
+    <v-textarea
+      clearable
+      label="Texto Transcrito"
       variant="outlined"
       class="textbox"
       bg-color="grey-lighten-2"
       color="black"
-      v-model="transcript"  
+      v-model="transcript"
+      readonly
     ></v-textarea>
 
-    <v-btn 
-      prepend-icon="mdi-microphone" 
+    <v-btn
+      prepend-icon="mdi-microphone"
       variant="outlined"
-      @click="startRecording"> 
-      Converter para Texto
-    </v-btn>  
+      @click="isRecording ? stopRecording() : startRecording()"
+    >
+      {{ isRecording ? 'Parar Gravação' : 'Iniciar Gravação' }}
+    </v-btn>
   </v-container>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import axios from 'axios';
 import { ref } from 'vue';
 
-const transcript = ref(''); // State para armazenar o texto transcrito
+// State para armazenar o texto transcrito e o estado da gravação
+const transcript = ref('');
+const isRecording = ref(false); 
+const mediaRecorder = ref(null); 
 
-// Função para iniciar a gravação de áudio
-const startRecording = () => {
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.start();
-
-      const audioChunks: BlobPart[] = [];
-
-      mediaRecorder.addEventListener("dataavailable", event => {
-        audioChunks.push(event.data);
-      });
-
-      mediaRecorder.addEventListener("stop", () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        processAudioToText(audioBlob);
-      });
-
-      setTimeout(() => {
-        mediaRecorder.stop();
-      }, 5000); // Grava por 5 segundos
-    });
+// Função para converter Blob de áudio para Base64
+const audioBlobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const arrayBuffer = reader.result;
+      const base64Audio = btoa(
+        new Uint8Array(arrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ''
+        )
+      );
+      resolve(base64Audio);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(blob);
+  });
 };
 
-// Função para processar o áudio e fazer a requisição à API Google Cloud Speech-to-Text
-const processAudioToText = async (audioBlob: Blob) => {
-  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I';
-  const reader = new FileReader();
+const startRecording = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder.value = new MediaRecorder(stream);
+    mediaRecorder.value.start();
+    isRecording.value = true;
 
-  reader.onload = async () => {
-    const audioBase64 = reader.result?.toString().split(',')[1];
+    mediaRecorder.value.addEventListener('dataavailable', async (event) => {
+      const audioBlob = event.data;
+      const base64Audio = await audioBlobToBase64(audioBlob);
 
-    if (!audioBase64) {
-      console.error('Erro ao converter áudio para base64.');
-      return;
-    }
+      // Processar o áudio para transcrição
+      await processAudioToText(base64Audio);
+    });
+  } catch (error) {
+    console.error('Erro ao acessar o microfone:', error);
+  }
+};
 
-    const requestData = {
-      config: {
-        encoding: 'LINEAR16',
-        sampleRateHertz: 48000, // Ajustado para a taxa de amostragem correta
-        languageCode: 'pt-BR',
-      },
-      audio: {
-        content: audioBase64,
-      },
-    };
+const stopRecording = () => {
+  if (mediaRecorder.value) {
+    mediaRecorder.value.stop();
+    isRecording.value = false;
+  }
+};
 
-    try {
-      const response = await axios.post(
-        `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
-        requestData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.data && response.data.results && response.data.results.length > 0) {
-        transcript.value = response.data.results
-          .map((result: any) => result.alternatives[0].transcript)
-          .join('\n'); // Atualiza o textarea com o texto transcrito
-      } else {
-        console.warn('Nenhum resultado de reconhecimento foi retornado.');
-        transcript.value = 'Nenhum texto reconhecido.';
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Erro durante o reconhecimento de fala:', error.message);
-        if (error.response) {
-          console.error('Detalhes do erro:', error.response.data);
-        }
-      } else {
-        console.error('Erro inesperado:', error);
-      }
-    }
+// Função para enviar o áudio para o Google Cloud Speech-to-Text
+const processAudioToText = async (base64Audio) => {
+  const apiKey = '*API KEY*';
+  const requestData = {
+    config: {
+      encoding: 'WEBM_OPUS',
+      sampleRateHertz: 48000,
+      languageCode: 'pt-BR',
+    },
+    audio: {
+      content: base64Audio,
+    },
   };
 
-  reader.readAsDataURL(audioBlob);
-};
+  try {
+    const response = await axios.post(
+      `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
+    if (response.data && response.data.results && response.data.results.length > 0) {
+      transcript.value = response.data.results[0].alternatives[0].transcript;
+    } else {
+      transcript.value = 'Nenhum texto reconhecido.';
+    }
+  } catch (error) {
+    console.error('Erro ao transcrever o áudio:', error);
+  }
+};
 </script>
 
 <style>
