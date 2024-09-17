@@ -1,24 +1,32 @@
 <template>
-  <v-container>
+    <v-sheet
+    :elevation="5"
+     color="#6A6969"
+     class="textbox"
+    >
+  <v-container class="cont">
     <v-textarea
       clearable
-      label="Texto Transcrito"
-      variant="outlined"
-      class="textbox"
+      auto-grow
+      variant="solo"
+      disabled
       bg-color="grey-lighten-2"
       color="black"
       v-model="transcript"
       readonly
     ></v-textarea>
 
-    <v-btn
+      <v-btn
       prepend-icon="mdi-microphone"
       variant="outlined"
+      class="record-btn"
       @click="isRecording ? stopRecording() : startRecording()"
-    >
+      >
       {{ isRecording ? 'Parar Gravação' : 'Iniciar Gravação' }}
     </v-btn>
+  
   </v-container>
+  </v-sheet>
 </template>
 
 <script setup>
@@ -113,6 +121,29 @@ const processAudioToText = async (base64Audio) => {
 
 <style>
 .textbox {
-  margin-top: 20%;
+  position: absolute;
+  top: 140px; 
+  left: 150px;
+  right: 16px;
+  bottom: 16px;
+  margin: 0;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: #6A6969;
 }
+
+
+.cont {
+  height: 100%;
+  position: relative;
+}
+
+.record-btn {
+  background-color: #20232A;
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 </style>
