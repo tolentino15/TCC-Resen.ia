@@ -9,7 +9,6 @@
       clearable
       auto-grow
       variant="solo"
-      disabled
       bg-color="grey-lighten-2"
       color="black"
       v-model="transcript"
@@ -23,7 +22,18 @@
       @click="isRecording ? stopRecording() : startRecording()"
       >
       {{ isRecording ? 'Parar Gravação' : 'Iniciar Gravação' }}
+
+  <v-progress-circular
+      
+      v-if="isProcessing"
+      :width="3"
+      color="white"
+      indeterminate
+    ></v-progress-circular>
+
     </v-btn>
+
+   
   
   </v-container>
   </v-sheet>
@@ -33,12 +43,12 @@
 import axios from 'axios';
 import { ref } from 'vue';
 
-// State para armazenar o texto transcrito e o estado da gravação
 const transcript = ref('');
-const isRecording = ref(false); 
-const mediaRecorder = ref(null); 
+const isRecording = ref(false);
+const isProcessing = ref(false);
+const gptResponse = ref(''); // To store GPT response
+const mediaRecorder = ref(null);
 
-// Função para converter Blob de áudio para Base64
 const audioBlobToBase64 = (blob) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -68,7 +78,6 @@ const startRecording = async () => {
       const audioBlob = event.data;
       const base64Audio = await audioBlobToBase64(audioBlob);
 
-      // Processar o áudio para transcrição
       await processAudioToText(base64Audio);
     });
   } catch (error) {
@@ -83,14 +92,43 @@ const stopRecording = () => {
   }
 };
 
-// Função para enviar o áudio para o Google Cloud Speech-to-Text
+// Call GPT API after transcribing text
+const callGPTApi = async (userInput) => {
+  const gptApiKey = '*GPT API KEY*'; // Your GPT API key here
+  const requestData = {
+    model: 'gpt-4', // Specify the model
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: userInput },
+    ],
+  };
+
+  try {
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${gptApiKey}`,
+        },
+      }
+    );
+
+    gptResponse.value = response.data.choices[0].message.content; // Store GPT response
+  } catch (error) {
+    console.error('Erro ao acessar o GPT API:', error);
+  }
+};
+
+// Transcribe audio and then send the transcript to GPT
 const processAudioToText = async (base64Audio) => {
-  const apiKey = '*API KEY*';
+  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I'; // Add your Google API key here
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
       sampleRateHertz: 48000,
-      languageCode: 'pt-BR',
+      languageCode: 'pt-BR', // Set the language of the input
     },
     audio: {
       content: base64Audio,
@@ -98,6 +136,7 @@ const processAudioToText = async (base64Audio) => {
   };
 
   try {
+    isProcessing.value = true;
     const response = await axios.post(
       `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
       requestData,
@@ -110,11 +149,16 @@ const processAudioToText = async (base64Audio) => {
 
     if (response.data && response.data.results && response.data.results.length > 0) {
       transcript.value = response.data.results[0].alternatives[0].transcript;
+      
+      // After transcribing, call GPT API with the transcribed text
+      await callGPTApi(transcript.value);
     } else {
       transcript.value = 'Nenhum texto reconhecido.';
     }
   } catch (error) {
     console.error('Erro ao transcrever o áudio:', error);
+  } finally {
+    isProcessing.value = false;
   }
 };
 </script>
