@@ -1,5 +1,5 @@
 <template>
-  <MainContent />
+    <feedback />
 </template>
 
 <script lang="ts" setup>

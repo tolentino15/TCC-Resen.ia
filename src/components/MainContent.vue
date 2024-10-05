@@ -1,41 +1,37 @@
 <template>
-    <v-sheet
+  <v-sheet
     :elevation="5"
-     color="#6A6969"
-     class="textbox"
-    >
-  <v-container class="cont">
-    <v-textarea
-      clearable
-      auto-grow
-      variant="solo"
-      bg-color="grey-lighten-2"
-      color="black"
-      v-model="transcript"
-      readonly
-    ></v-textarea>
+    color="#6A6969"
+    class="textbox"
+  >
+    <v-container class="cont">
+      <!-- Chat Area -->
+      <div class="chat-area">
+        <div v-for="(message, index) in messages" :key="index" class="message-box">
+          <div :class="message.role === 'user' ? 'user-message' : 'gpt-message'">
+            {{ message.text }}
+          </div>
+        </div>
+      </div>
 
+      <!-- Record and Transcribe Area -->
       <v-btn
-      prepend-icon="mdi-microphone"
-      variant="outlined"
-      class="record-btn"
-      @click="isRecording ? stopRecording() : startRecording()"
+        prepend-icon="mdi-microphone"
+        variant="outlined"
+        class="record-btn"
+        :disabled="isProcessing"
+        @click="isRecording ? stopRecording() : startRecording()"
       >
-      {{ isRecording ? 'Parar Gravação' : 'Iniciar Gravação' }}
+        {{ isRecording ? 'Parar Gravação' : 'Iniciar Gravação' }}
 
-  <v-progress-circular
-      
-      v-if="isProcessing"
-      :width="3"
-      color="white"
-      indeterminate
-    ></v-progress-circular>
-
-    </v-btn>
-
-   
-  
-  </v-container>
+        <v-progress-circular
+          v-if="isProcessing"
+          :width="3"
+          color="white"
+          indeterminate
+        ></v-progress-circular>
+      </v-btn>
+    </v-container>
   </v-sheet>
 </template>
 
@@ -46,7 +42,7 @@ import { ref } from 'vue';
 const transcript = ref('');
 const isRecording = ref(false);
 const isProcessing = ref(false);
-const gptResponse = ref(''); // To store GPT response
+const messages = ref([]);  // Lista de mensagens do chat
 const mediaRecorder = ref(null);
 
 const audioBlobToBase64 = (blob) => {
@@ -92,43 +88,14 @@ const stopRecording = () => {
   }
 };
 
-// Call GPT API after transcribing text
-const callGPTApi = async (userInput) => {
-  const gptApiKey = '*GPT API KEY*'; // Your GPT API key here
-  const requestData = {
-    model: 'gpt-4', // Specify the model
-    messages: [
-      { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: userInput },
-    ],
-  };
-
-  try {
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      requestData,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${gptApiKey}`,
-        },
-      }
-    );
-
-    gptResponse.value = response.data.choices[0].message.content; // Store GPT response
-  } catch (error) {
-    console.error('Erro ao acessar o GPT API:', error);
-  }
-};
-
-// Transcribe audio and then send the transcript to GPT
+// Transcrever áudio usando a API do Google
 const processAudioToText = async (base64Audio) => {
-  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I'; // Add your Google API key here
+  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I';  // Chave da API do Google válida
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
       sampleRateHertz: 48000,
-      languageCode: 'pt-BR', // Set the language of the input
+      languageCode: 'pt-BR',  // Definir o idioma de entrada
     },
     audio: {
       content: base64Audio,
@@ -150,8 +117,8 @@ const processAudioToText = async (base64Audio) => {
     if (response.data && response.data.results && response.data.results.length > 0) {
       transcript.value = response.data.results[0].alternatives[0].transcript;
       
-      // After transcribing, call GPT API with the transcribed text
-      await callGPTApi(transcript.value);
+      // Adicionar transcrição na lista de mensagens
+      messages.value.push({ role: 'user', text: transcript.value });
     } else {
       transcript.value = 'Nenhum texto reconhecido.';
     }
@@ -176,10 +143,38 @@ const processAudioToText = async (base64Audio) => {
   background-color: #6A6969;
 }
 
-
 .cont {
   height: 100%;
   position: relative;
+}
+
+.chat-area {
+  height: 400px;
+  overflow-y: scroll;
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.message-box {
+  margin-bottom: 16px;
+}
+
+.user-message {
+  background-color: #e1f5fe;
+  color: #0277bd;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: right;
+}
+
+.gpt-message {
+  background-color: #e0e0e0;
+  color: #333;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: left;
 }
 
 .record-btn {
@@ -189,5 +184,4 @@ const processAudioToText = async (base64Audio) => {
   left: 50%;
   transform: translateX(-50%);
 }
-
 </style>
