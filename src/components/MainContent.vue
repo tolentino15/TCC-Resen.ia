@@ -1,9 +1,5 @@
 <template>
-  <v-sheet
-    :elevation="5"
-    color="#6A6969"
-    class="textbox"
-  >
+  <v-sheet :elevation="5" color="#6A6969" class="textbox">
     <v-container class="cont">
       <!-- Chat Area -->
       <div class="chat-area">
@@ -23,7 +19,6 @@
         @click="isRecording ? stopRecording() : startRecording()"
       >
         {{ isRecording ? 'Parar Gravação' : 'Iniciar Gravação' }}
-
         <v-progress-circular
           v-if="isProcessing"
           :width="3"
@@ -42,9 +37,10 @@ import { ref } from 'vue';
 const transcript = ref('');
 const isRecording = ref(false);
 const isProcessing = ref(false);
-const messages = ref([]);  // Lista de mensagens do chat
+const messages = ref([]);
 const mediaRecorder = ref(null);
 
+// Função para converter Blob de áudio em Base64
 const audioBlobToBase64 = (blob) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -63,6 +59,7 @@ const audioBlobToBase64 = (blob) => {
   });
 };
 
+// Função para começar a gravação de áudio
 const startRecording = async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -73,14 +70,14 @@ const startRecording = async () => {
     mediaRecorder.value.addEventListener('dataavailable', async (event) => {
       const audioBlob = event.data;
       const base64Audio = await audioBlobToBase64(audioBlob);
-
-      await processAudioToText(base64Audio);
+      await processAudioToText(base64Audio);  // Processa o áudio
     });
   } catch (error) {
     console.error('Erro ao acessar o microfone:', error);
   }
 };
 
+// Função para parar a gravação de áudio
 const stopRecording = () => {
   if (mediaRecorder.value) {
     mediaRecorder.value.stop();
@@ -88,14 +85,15 @@ const stopRecording = () => {
   }
 };
 
-// Transcrever áudio usando a API do Google
+// Função para transcrever áudio usando a API do Google
 const processAudioToText = async (base64Audio) => {
-  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I';  // Chave da API do Google válida
+  // Aqui continuamos a usar a API de transcrição do Google (já configurada)
+  const apiKey = AIzaSyATfl0wVAtOja0NhpK6EVdg-vcHEkbrH6U; // Substitua pela chave da API de Transcrição
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
       sampleRateHertz: 48000,
-      languageCode: 'pt-BR',  // Definir o idioma de entrada
+      languageCode: 'pt-BR',
     },
     audio: {
       content: base64Audio,
@@ -116,9 +114,15 @@ const processAudioToText = async (base64Audio) => {
 
     if (response.data && response.data.results && response.data.results.length > 0) {
       transcript.value = response.data.results[0].alternatives[0].transcript;
-      
+
       // Adicionar transcrição na lista de mensagens
       messages.value.push({ role: 'user', text: transcript.value });
+
+      // Chamar API do Gemini com o texto transcrito
+      const geminiReply = await callGeminiApi(transcript.value);
+
+      // Adicionar a resposta do Gemini na lista de mensagens
+      messages.value.push({ role: 'gpt', text: geminiReply });
     } else {
       transcript.value = 'Nenhum texto reconhecido.';
     }
@@ -128,12 +132,38 @@ const processAudioToText = async (base64Audio) => {
     isProcessing.value = false;
   }
 };
+
+// Função para chamar a API Gemini
+const callGeminiApi = async (message) => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;  // Pega a chave da API do .env
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+  const requestData = {
+    contents: [{
+      parts: [{ text: message }]
+    }]
+  };
+
+  try {
+    const response = await axios.post(url, requestData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const geminiResponse = response.data.contents[0].parts[0].text;  // Resposta do Gemini
+    return geminiResponse;
+  } catch (error) {
+    console.error('Erro ao chamar a API do Gemini:', error.response ? error.response.data : error.message);
+    return 'Erro ao gerar resposta.';
+  }
+};
 </script>
 
 <style>
 .textbox {
   position: absolute;
-  top: 140px; 
+  top: 140px;
   left: 150px;
   right: 16px;
   bottom: 16px;
