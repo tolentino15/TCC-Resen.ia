@@ -88,7 +88,7 @@ const stopRecording = () => {
 // Função para transcrever áudio usando a API do Google
 const processAudioToText = async (base64Audio) => {
   // Aqui continuamos a usar a API de transcrição do Google (já configurada)
-  const apiKey = AIzaSyATfl0wVAtOja0NhpK6EVdg-vcHEkbrH6U; // Substitua pela chave da API de Transcrição
+  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I'; // Substitua pela chave da API de Transcrição
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
