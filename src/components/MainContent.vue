@@ -88,7 +88,7 @@ const stopRecording = () => {
 
 
 const processAudioToText = async (base64Audio) => {
-  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I'; 
+  const apiKey = import.meta.env.VITE_GOOGLE_TRANSCRIPTION_API_KEY;
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
@@ -131,7 +131,7 @@ const processAudioToText = async (base64Audio) => {
 };
 
 const callGeminiApi = async (message) => {
-  const apiKey = 'AIzaSyATfl0wVAtOja0NhpK6EVdg-vcHEkbrH6U';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
