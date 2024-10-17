@@ -33,6 +33,7 @@
 <script setup>
 import axios from 'axios';
 import { ref } from 'vue';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const transcript = ref('');
 const isRecording = ref(false);
@@ -40,7 +41,9 @@ const isProcessing = ref(false);
 const messages = ref([]);
 const mediaRecorder = ref(null);
 
-// Função para converter Blob de áudio em Base64
+const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 const audioBlobToBase64 = (blob) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -59,7 +62,6 @@ const audioBlobToBase64 = (blob) => {
   });
 };
 
-// Função para começar a gravação de áudio
 const startRecording = async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -70,14 +72,13 @@ const startRecording = async () => {
     mediaRecorder.value.addEventListener('dataavailable', async (event) => {
       const audioBlob = event.data;
       const base64Audio = await audioBlobToBase64(audioBlob);
-      await processAudioToText(base64Audio);  // Processa o áudio
+      await processAudioToText(base64Audio); 
     });
   } catch (error) {
     console.error('Erro ao acessar o microfone:', error);
   }
 };
 
-// Função para parar a gravação de áudio
 const stopRecording = () => {
   if (mediaRecorder.value) {
     mediaRecorder.value.stop();
@@ -85,10 +86,9 @@ const stopRecording = () => {
   }
 };
 
-// Função para transcrever áudio usando a API do Google
+
 const processAudioToText = async (base64Audio) => {
-  // Aqui continuamos a usar a API de transcrição do Google (já configurada)
-  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I'; // Substitua pela chave da API de Transcrição
+  const apiKey = 'AIzaSyAfsRfMbKJw4veL9BlNiiR17WjyrN9BN0I'; 
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
@@ -115,13 +115,10 @@ const processAudioToText = async (base64Audio) => {
     if (response.data && response.data.results && response.data.results.length > 0) {
       transcript.value = response.data.results[0].alternatives[0].transcript;
 
-      // Adicionar transcrição na lista de mensagens
       messages.value.push({ role: 'user', text: transcript.value });
 
-      // Chamar API do Gemini com o texto transcrito
       const geminiReply = await callGeminiApi(transcript.value);
 
-      // Adicionar a resposta do Gemini na lista de mensagens
       messages.value.push({ role: 'gpt', text: geminiReply });
     } else {
       transcript.value = 'Nenhum texto reconhecido.';
@@ -133,26 +130,27 @@ const processAudioToText = async (base64Audio) => {
   }
 };
 
-// Função para chamar a API Gemini
 const callGeminiApi = async (message) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;  // Pega a chave da API do .env
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-  const requestData = {
-    contents: [{
-      parts: [{ text: message }]
-    }]
-  };
+  const apiKey = 'AIzaSyATfl0wVAtOja0NhpK6EVdg-vcHEkbrH6U';
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
-    const response = await axios.post(url, requestData, {
-      headers: {
-        'Content-Type': 'application/json',
+    const chat = model.startChat({
+      history: [
+        {
+          role: "user",
+          parts: [{ text: message }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: 100,
       },
     });
 
-    const geminiResponse = response.data.contents[0].parts[0].text;  // Resposta do Gemini
-    return geminiResponse;
+    const result = await chat.sendMessage(message);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
     console.error('Erro ao chamar a API do Gemini:', error.response ? error.response.data : error.message);
     return 'Erro ao gerar resposta.';
