@@ -2,7 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import FeedbackView from '../views/feedbackView.vue'
-import ProductsView from '../views/ProductsView.vue';
+import ConfigView from '../views/ConfigView.vue';
 
 const routes = [
   {
@@ -15,9 +15,9 @@ const routes = [
     name: 'feedbacks',
     component: FeedbackView,
   },{
-    path: '/produtos',
-    name: 'produtos',
-    component: ProductsView,  // Adicionar a rota para a página de produtos
+    path: '/Config',
+    name: 'Config',
+    component: ConfigView,  
   },
 ];
 
