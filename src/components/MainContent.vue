@@ -1,7 +1,7 @@
 <template>
-  <v-sheet :elevation="5" color="#6A6969" class="textbox">
+  <v-sheet :elevation="5" color="#20232A" class="textbox">
     <v-container class="cont">
-      <!-- Chat Area -->
+      <!-- Área de Chat -->
       <div class="chat-area">
         <div v-for="(message, index) in messages" :key="index" class="message-box">
           <div :class="message.role === 'user' ? 'user-message' : 'gpt-message'">
@@ -10,10 +10,10 @@
         </div>
       </div>
 
-      <!-- Record and Transcribe Area -->
+      <!-- Botão de Gravação -->
       <v-btn
         prepend-icon="mdi-microphone"
-        variant="outlined"
+        variant="contained"
         class="record-btn"
         :disabled="isProcessing"
         @click="isRecording ? stopRecording() : startRecording()"
@@ -86,7 +86,6 @@ const stopRecording = () => {
   }
 };
 
-
 const processAudioToText = async (base64Audio) => {
   const apiKey = import.meta.env.VITE_GOOGLE_TRANSCRIPTION_API_KEY;
   const requestData = {
@@ -150,15 +149,49 @@ const callGeminiApi = async (message) => {
 
     const result = await chat.sendMessage(message);
     const response = await result.response;
-    return response.text();
+    const replyText = response.text();
+
+    await textToSpeech(replyText);
+
+    return replyText;
   } catch (error) {
     console.error('Erro ao chamar a API do Gemini:', error.response ? error.response.data : error.message);
     return 'Erro ao gerar resposta.';
   }
 };
+
+const textToSpeech = async (text) => {
+  const apiKey = import.meta.env.VITE_GOOGLE_TTS_API_KEY;
+  const requestData = {
+    input: { text },
+    voice: { languageCode: 'pt-BR', ssmlGender: 'NEUTRAL' },
+    audioConfig: { audioEncoding: 'MP3' },
+  };
+
+  try {
+    const response = await axios.post(
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (response.data && response.data.audioContent) {
+      const audioContent = response.data.audioContent;
+      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+      audio.play();
+    }
+  } catch (error) {
+    console.error('Erro ao converter texto em fala:', error);
+  }
+};
 </script>
 
-<style>
+<style scoped>
+/* Container principal do chat */
 .textbox {
   position: absolute;
   top: 140px;
@@ -167,49 +200,63 @@ const callGeminiApi = async (message) => {
   bottom: 16px;
   margin: 0;
   padding: 16px;
-  box-sizing: border-box;
-  background-color: #6A6969;
+  background-color: #20232A;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .cont {
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  position: relative;
 }
 
+/* Área de mensagens */
 .chat-area {
-  height: 400px;
-  overflow-y: scroll;
+  flex: 1;
+  overflow-y: auto;
   padding: 16px;
-  background-color: #f5f5f5;
+  background-color: #ffffff;
   border-radius: 8px;
   margin-bottom: 16px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .message-box {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
 }
 
 .user-message {
-  background-color: #e1f5fe;
-  color: #0277bd;
-  padding: 10px;
+  background-color: #0277bd;
+  color: white;
+  padding: 12px 16px;
   border-radius: 8px;
-  text-align: right;
+  max-width: 80%;
+  margin-left: auto;
+  font-weight: bold;
 }
 
 .gpt-message {
-  background-color: #e0e0e0;
+  background-color: #f0f0f0;
   color: #333;
-  padding: 10px;
+  padding: 12px 16px;
   border-radius: 8px;
-  text-align: left;
+  max-width: 80%;
+  margin-right: auto;
 }
 
+/* Botão de gravação */
 .record-btn {
-  background-color: #20232A;
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  background-color: #4CAF50;
+  color: white;
+  font-weight: bold;
+  border-radius: 8px;
+  height: 48px;
+  margin-top: 16px;
+  align-self: center;
 }
 </style>
