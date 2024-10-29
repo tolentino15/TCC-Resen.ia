@@ -13,7 +13,7 @@
       <!-- Botão de Gravação -->
       <v-btn
         prepend-icon="mdi-microphone"
-        variant="contained"
+        color="green"
         class="record-btn"
         :disabled="isProcessing"
         @click="isRecording ? stopRecording() : startRecording()"
@@ -91,7 +91,6 @@ const processAudioToText = async (base64Audio) => {
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
-      sampleRateHertz: 48000,
       languageCode: 'pt-BR',
     },
     audio: {
@@ -113,12 +112,13 @@ const processAudioToText = async (base64Audio) => {
 
     if (response.data && response.data.results && response.data.results.length > 0) {
       transcript.value = response.data.results[0].alternatives[0].transcript;
+      console.log("Transcrição recebida:", transcript.value);
 
       messages.value.push({ role: 'user', text: transcript.value });
 
       const geminiReply = await callGeminiApi(transcript.value);
 
-      messages.value.push({ role: 'gpt', text: geminiReply });
+      messages.value.push({ role: 'AI', text: geminiReply });
     } else {
       transcript.value = 'Nenhum texto reconhecido.';
     }
@@ -133,7 +133,6 @@ const callGeminiApi = async (message) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
   try {
     const chat = model.startChat({
       history: [
@@ -146,46 +145,12 @@ const callGeminiApi = async (message) => {
         maxOutputTokens: 100,
       },
     });
-
     const result = await chat.sendMessage(message);
     const response = await result.response;
-    const replyText = response.text();
-
-    await textToSpeech(replyText);
-
-    return replyText;
+    return response.text();
   } catch (error) {
     console.error('Erro ao chamar a API do Gemini:', error.response ? error.response.data : error.message);
     return 'Erro ao gerar resposta.';
-  }
-};
-
-const textToSpeech = async (text) => {
-  const apiKey = import.meta.env.VITE_GOOGLE_TTS_API_KEY;
-  const requestData = {
-    input: { text },
-    voice: { languageCode: 'pt-BR', ssmlGender: 'NEUTRAL' },
-    audioConfig: { audioEncoding: 'MP3' },
-  };
-
-  try {
-    const response = await axios.post(
-      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
-      requestData,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (response.data && response.data.audioContent) {
-      const audioContent = response.data.audioContent;
-      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-      audio.play();
-    }
-  } catch (error) {
-    console.error('Erro ao converter texto em fala:', error);
   }
 };
 </script>
@@ -218,7 +183,7 @@ const textToSpeech = async (text) => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background-color: #ffffff;
+  background-color: grey;
   border-radius: 8px;
   margin-bottom: 16px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
@@ -241,7 +206,7 @@ const textToSpeech = async (text) => {
 }
 
 .gpt-message {
-  background-color: #f0f0f0;
+  background-color: white;
   color: #333;
   padding: 12px 16px;
   border-radius: 8px;
