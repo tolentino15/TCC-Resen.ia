@@ -91,7 +91,7 @@ const processAudioToText = async (base64Audio) => {
   const requestData = {
     config: {
       encoding: 'WEBM_OPUS',
-      languageCode: 'pt-BR',
+      languageCode: 'en-US',
     },
     audio: {
       content: base64Audio,
@@ -134,17 +134,27 @@ const callGeminiApi = async (message) => {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   try {
+    const prompt = `Você é um amigo próximo do usuário e vai conversar de forma descontraída sobre o dia a dia em inglês. Mantenha o tom amigável e, de tempos em tempos, troque o contexto da conversa para mantê-la dinâmica. Durante a conversa, avalie o nível de inglês do usuário de maneira sutil e, ao final, forneça um feedback completo e construtivo sobre o nível de inglês, destacando pontos fortes e áreas para melhorar, em português. Se o usuário perguntar algo relacionado a vocabulário ou gramática, diga de maneira sutil que não entendeu e peça para a pessoa repetir. Nunca corrija o usuário diretamente durante a conversa. Sempre mantenha o tom de uma conversa entre amigos, e sempre em inglês.`
     const chat = model.startChat({
       history: [
         {
           role: "user",
-          parts: [{ text: message }],
+          parts: [{ text: `${prompt}
+${message}` }],
         },
       ],
       generationConfig: {
         maxOutputTokens: 100,
       },
     });
+
+    // Verificar se o usuário deseja encerrar a conversa
+    const lowerCaseMessage = message.toLowerCase();
+    if (lowerCaseMessage.includes("bye") || lowerCaseMessage.includes("goodbye") || lowerCaseMessage.includes("see you") || lowerCaseMessage.includes("farewell")) {
+      const feedback = generateFeedback(messages.value);
+      return feedback;
+    }
+
     const result = await chat.sendMessage(message);
     const response = await result.response;
     return response.text();
@@ -152,6 +162,33 @@ const callGeminiApi = async (message) => {
     console.error('Erro ao chamar a API do Gemini:', error.response ? error.response.data : error.message);
     return 'Erro ao gerar resposta.';
   }
+};
+
+const generateFeedback = (conversationHistory) => {
+  let feedback = 'Obrigado pela conversa! Aqui está um feedback sobre o seu nível de inglês: ';
+  let totalMessages = 0;
+  let vocabularyErrors = 0;
+  let grammarErrors = 0;
+  let fluency = 0;
+
+  conversationHistory.forEach((message) => {
+    if (message.role === 'user') {
+      totalMessages++;
+      // Análise fictícia para avaliação do nível do inglês
+      if (message.text.includes('mistake') || message.text.includes('wrong')) {
+        vocabularyErrors++;
+      }
+      if (message.text.includes('error') || message.text.includes('incorrect')) {
+        grammarErrors++;
+      }
+      fluency += Math.min(message.text.length, 5); // Avaliação fictícia de fluência
+    }
+  });
+
+  feedback += `Você trocou aproximadamente ${totalMessages} mensagens comigo. Notei que há alguns erros de vocabulário em ${vocabularyErrors} de suas mensagens, e erros gramaticais em ${grammarErrors} delas. Além disso, sua fluência está em um nível consistente, mas há espaço para aprimorar as estruturas das frases e expandir o uso de expressões. `;
+  feedback += 'Continue praticando, e lembre-se que a prática constante leva à perfeição. Parabéns pelo seu progresso até agora, e não desista!';
+
+  return feedback;
 };
 </script>
 
