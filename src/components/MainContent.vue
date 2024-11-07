@@ -134,26 +134,34 @@ const callGeminiApi = async (message) => {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   try {
-    const prompt = `Você é um amigo próximo do usuário e vai conversar de forma descontraída sobre o dia a dia em inglês. Mantenha o tom amigável e, de tempos em tempos, troque o contexto da conversa para mantê-la dinâmica. Durante a conversa, avalie o nível de inglês do usuário de maneira sutil e, ao final, forneça um feedback completo e construtivo sobre o nível de inglês, destacando pontos fortes e áreas para melhorar, em português. Se o usuário perguntar algo relacionado a vocabulário ou gramática, diga de maneira sutil que não entendeu e peça para a pessoa repetir. Nunca corrija o usuário diretamente durante a conversa. Sempre mantenha o tom de uma conversa entre amigos, e sempre em inglês.`
+
+    const prompt = `Você fará o papel de um agente avaliador do nível de inglês do usuário.
+    Vocês terão uma conversa comum, durante a conversa você irá assumir temporariamente o papel
+    de um amigo próximo do usuário para conversar normalmente com ele sobre assuntos do dia a dia,
+    mantendo uma conversa dinâmica e interativa, reconheça o contexto abordado pelo usuário e mantenha
+    a conversa nesse contexto, com um percentual de aproximadamente 10% altere o contexto da conversa
+    para uma maior naturalidade da conversa. Lembre-se de todas as respostas do usuário para entender melhor o rumo e contexto da conversa.
+     Após o usuário encerrar a conversa com algo semelhante
+    a "bye" ou "see you", você volta ao seu cargo de avaliador e gerará um feedback detalhado a
+    respeito do nível de inglês do usuário, mostrando-o quais aspectos podem ser melhorados como
+    gramática, vocabulário, entre outros. O feedback deve ser gerado apenas ao final da conversa,
+    e deve ser em português-br. Inclua recomendações específicas para o usuário melhorar seu inglês,
+    como práticas sugeridas, livros, cursos ou outras atividades que possam ajudar no desenvolvimento.
+    Toda a conversa com o usuário deve acontecer em inglês, não corrija o usuário em momento algum,
+    mantenha sempre um tom amigável e descontraído. No feedback adote uma postura profissional e direta.`;
+
     const chat = model.startChat({
       history: [
         {
           role: "user",
           parts: [{ text: `${prompt}
-${message}` }],
+  ${message}` }],
         },
       ],
       generationConfig: {
-        maxOutputTokens: 100,
+        maxOutputTokens: 500,
       },
     });
-
-    // Verificar se o usuário deseja encerrar a conversa
-    const lowerCaseMessage = message.toLowerCase();
-    if (lowerCaseMessage.includes("bye") || lowerCaseMessage.includes("goodbye") || lowerCaseMessage.includes("see you") || lowerCaseMessage.includes("farewell")) {
-      const feedback = generateFeedback(messages.value);
-      return feedback;
-    }
 
     const result = await chat.sendMessage(message);
     const response = await result.response;
@@ -164,32 +172,7 @@ ${message}` }],
   }
 };
 
-const generateFeedback = (conversationHistory) => {
-  let feedback = 'Obrigado pela conversa! Aqui está um feedback sobre o seu nível de inglês: ';
-  let totalMessages = 0;
-  let vocabularyErrors = 0;
-  let grammarErrors = 0;
-  let fluency = 0;
 
-  conversationHistory.forEach((message) => {
-    if (message.role === 'user') {
-      totalMessages++;
-      // Análise fictícia para avaliação do nível do inglês
-      if (message.text.includes('mistake') || message.text.includes('wrong')) {
-        vocabularyErrors++;
-      }
-      if (message.text.includes('error') || message.text.includes('incorrect')) {
-        grammarErrors++;
-      }
-      fluency += Math.min(message.text.length, 5); // Avaliação fictícia de fluência
-    }
-  });
-
-  feedback += `Você trocou aproximadamente ${totalMessages} mensagens comigo. Notei que há alguns erros de vocabulário em ${vocabularyErrors} de suas mensagens, e erros gramaticais em ${grammarErrors} delas. Além disso, sua fluência está em um nível consistente, mas há espaço para aprimorar as estruturas das frases e expandir o uso de expressões. `;
-  feedback += 'Continue praticando, e lembre-se que a prática constante leva à perfeição. Parabéns pelo seu progresso até agora, e não desista!';
-
-  return feedback;
-};
 </script>
 
 <style scoped>
