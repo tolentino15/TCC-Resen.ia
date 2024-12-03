@@ -172,11 +172,48 @@ const callGeminiApi = async (message) => {
   }
 };
 
+const processTextToSpeech = async (text) => {
+  const apiKey = import.meta.env.VITE_GOOGLE_TEXT_TO_SPEECH_API_KEY;
+  const requestData = {
+    input: {
+      text: text,
+    },
+    voice: {
+      languageCode: 'en-US',
+      ssmlGender: 'NEUTRAL',
+    },
+    audioConfig: {
+      audioEncoding: 'MP3',
+    },
+  };
 
+  try {
+    const response = await axios.post(
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (response.data && response.data.audioContent) {
+      const audioBase64 = response.data.audioContent;
+      const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
+      audio.play();
+    } else {
+      console.error('Nenhum conteúdo de áudio recebido.');
+    }
+  } catch (error) {
+    console.error('Erro ao sintetizar texto em fala:', error);
+  }
+};
 </script>
 
+
 <style scoped>
-/* Container principal do chat */
+
 .textbox {
   position: absolute;
   top: 140px;
@@ -198,7 +235,6 @@ const callGeminiApi = async (message) => {
   height: 100%;
 }
 
-/* Área de mensagens */
 .chat-area {
   flex: 1;
   overflow-y: auto;
@@ -234,7 +270,7 @@ const callGeminiApi = async (message) => {
   margin-right: auto;
 }
 
-/* Botão de gravação */
+
 .record-btn {
   background-color: #4CAF50;
   color: white;
